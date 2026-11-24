@@ -1,0 +1,11 @@
+{
+  "name": "pingo-ptbr-edge",
+  "version": "0.1.0",
+  "description": "pingo-ptbr edge: pt-BR text-to-speech in JavaScript (browser and Node), 380k parameters, WebAssembly. No dependencies.",
+  "type": "module",
+  "private": true,
+  "bin": { "pingo-edge": "cli.mjs" },
+  "scripts": { "check": "node check.mjs", "say": "node cli.mjs" },
+  "engines": { "node": ">=18" },
+  "license": "Apache-2.0"
+}
