@@ -1,0 +1,16 @@
+Copyright 2026 SemFence (Gustavo Toledo)
+
+Criado pela SemFence (Gustavo Toledo) - https://semfence.com
+Created by SemFence (Gustavo Toledo) - https://semfence.com
+
+pingo-ptbr-edge is the microcontroller edition of pingo-ptbr (https://huggingface.co/semfence/pingo-ptbr): a Brazilian Portuguese
+text-to-speech model whose acoustic part is stored in 4 bits per weight and whose vocoder is a reduced FARGAN (109,733 parameters)
+trained from scratch by SemFence, with a C inference runtime and an ESP32-S3 firmware project.
+
+The architecture of the vocoder is the FARGAN vocoder of Xiph/Opus (BSD-3-Clause) with narrower layers. No weights of the
+original FARGAN or of PiVo are used by this edition: the reduced vocoder was trained from random initialization.
+Its notices are in LICENSES/. The acoustic design follows PiVo-1.4M (Empero Research, Apache-2.0); its acoustic weights are
+trained from scratch by SemFence (see semfence/pingo-ptbr).
+
+The weights are licensed under CC BY 4.0 (credit required: SemFence, Gustavo Toledo). The code is licensed under Apache-2.0.
+The FARGAN-derived code keeps its BSD-3-Clause license.

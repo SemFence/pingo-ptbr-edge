@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+c/pingo_c
+c/ac_test
+*.s16
+build/
+sdkconfig
+sdkconfig.old
