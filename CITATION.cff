@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "Please cite pingo-ptbr (and PiVo) when using this release."
+title: "pingo-ptbr: a 0.87 MB two-voice Brazilian Portuguese text-to-speech model"
+version: 1.0.0
+date-released: 2026-11-21
+type: software
+authors:
+  - name: "SemFence"
+  - family-names: Toledo
+    given-names: Gustavo
+license: CC-BY-4.0
+url: "https://huggingface.co/semfence/pingo-ptbr"
+references:
+  - type: software
+    title: "PiVo-1.4M"
+    authors:
+      - family-names: Lehmann
+        given-names: Leon
+    url: "https://huggingface.co/empero-ai/PiVo-1.4M"

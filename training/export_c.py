@@ -1,0 +1,65 @@
+"""Exporta o xs em int8 (por linha) para um cabeçalho C e gera um vetor de teste com a referência em PyTorch.
+  python3 export_c.py remote/xs/best.pth c/ --features val.f32 --nb-features 36 --start 60000 --frames 300
+Gera: c/xs_weights.h (pesos int8 + escalas float), c/test_in.f32 (T+4 quadros x 20), c/test_ref.f32 (T*160 amostras, antes da
+de-ênfase). A referência usa os MESMOS pesos arredondados e desliga o ruído de dither `n()` do treino (só limita a [-1,1])."""
+import sys, os, argparse, types, numpy as np, torch
+sys.modules.setdefault("torchaudio", types.ModuleType("torchaudio"))
+HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
+import fargan_small as fargan
+
+ap = argparse.ArgumentParser(); ap.add_argument("ckpt"); ap.add_argument("out")
+ap.add_argument("--features", required=True); ap.add_argument("--nb-features", type=int, default=36)
+ap.add_argument("--start", type=int, default=60000); ap.add_argument("--frames", type=int, default=300)
+a = ap.parse_args(); os.makedirs(a.out, exist_ok=True)
+ck = torch.load(a.ckpt, map_location="cpu"); sd = ck["state_dict"]; Z = dict(C=80, d1=64, d2=128, F=192, H1=160, H2=128, H3=128, S=128); Z.update(ck["sizes"])
+
+def eff(prefix):                                  # peso efetivo (weight_norm: g * v / ||v||) ou peso simples
+    if prefix + ".weight_v" in sd:
+        g, v = sd[prefix + ".weight_g"], sd[prefix + ".weight_v"]
+        return g * v / v.reshape(v.shape[0], -1).norm(dim=1).reshape(-1, *[1] * (v.dim() - 1))
+    return sd[prefix + ".weight"]
+
+def quant(w):                                     # int8 simétrico por linha (canal de saída)
+    w2 = w.reshape(w.shape[0], -1); s = (w2.abs().amax(1, keepdim=True) / 127).clamp_min(1e-12)
+    q = (w2 / s).round().clamp(-127, 127)
+    return q.to(torch.int8).numpy(), s[:, 0].numpy().astype(np.float32), (q * s).reshape(w.shape)
+
+layers = {  # nome C -> (prefixo no state_dict, reorganização)
+    "pembed": "cond_net.pembed", "fdense1": "cond_net.fdense1", "fconv1": "cond_net.fconv1", "fdense2": "cond_net.fdense2",
+    "cond_gain": "sig_net.cond_gain_dense", "fwc0": "sig_net.fwc0.conv", "fwc0_glu": "sig_net.fwc0.glu.gate",
+    "gru1_ih": "sig_net.gru1.weight_ih", "gru1_hh": "sig_net.gru1.weight_hh", "gru2_ih": "sig_net.gru2.weight_ih", "gru2_hh": "sig_net.gru2.weight_hh",
+    "gru3_ih": "sig_net.gru3.weight_ih", "gru3_hh": "sig_net.gru3.weight_hh",
+    "gru1_glu": "sig_net.gru1_glu.gate", "gru2_glu": "sig_net.gru2_glu.gate", "gru3_glu": "sig_net.gru3_glu.gate", "skip_glu": "sig_net.skip_glu.gate",
+    "skip_dense": "sig_net.skip_dense", "sig_out": "sig_net.sig_dense_out", "gain_out": "sig_net.gain_dense_out"}
+sd_ref = dict(sd); qs = {}; rows_total = 0; w_total = 0
+for name, pre in layers.items():
+    w = eff(pre) if not pre.endswith((".weight_ih", ".weight_hh")) else sd[pre]
+    if name == "fconv1": w = w.permute(0, 2, 1).contiguous()          # (out, in, k) -> (out, k, in): a linha é [quadro0 | quadro1 | quadro2]
+    q, s, wd = quant(w); qs[name] = (q, s); rows_total += q.shape[0]; w_total += q.size
+    # grava o peso arredondado de volta no state_dict de referência, no formato original
+    if name == "fconv1": wd = wd.permute(0, 2, 1)
+    if pre.endswith((".weight_ih", ".weight_hh")): sd_ref[pre] = wd
+    elif pre + ".weight_v" in sd:
+        sd_ref[pre + ".weight_v"] = wd; sd_ref[pre + ".weight_g"] = wd.reshape(wd.shape[0], -1).norm(dim=1).reshape(sd[pre + ".weight_g"].shape)
+    else: sd_ref[pre + ".weight"] = wd
+
+with open(os.path.join(a.out, "xs_weights.h"), "w") as f:
+    f.write("/* gerado por export_c.py: pesos int8 por linha + escala float por linha. Não editar. */\n#pragma once\n#include <stdint.h>\n#ifdef ESP_PLATFORM\n#include \"esp_attr.h\"\n#define XS_ATTR DRAM_ATTR   /* pesos do vocoder na SRAM interna: são relidos 400x por segundo */\n#else\n#define XS_ATTR\n#endif\n")
+    for k, v in dict(C=Z["C"], D1=Z["d1"], D2=Z["d2"], F=Z["F"], H1=Z["H1"], H2=Z["H2"], H3=Z["H3"], S=Z["S"]).items(): f.write(f"#define XS_{k} {v}\n")
+    for name, (q, s) in qs.items():
+        f.write(f"#define XS_{name}_ROWS {q.shape[0]}\n#define XS_{name}_COLS {q.shape[1]}\n")
+        f.write(f"XS_ATTR static const int8_t xs_{name}_w[] = {{" + ",".join(map(str, q.flatten().tolist())) + "};\n")
+        f.write(f"XS_ATTR static const float xs_{name}_s[] = {{" + ",".join(f"{x:.9g}f" for x in s.tolist()) + "};\n")
+    f.write(f"static const float xs_cond_gain_b[1] = {{{sd['sig_net.cond_gain_dense.bias'][0].item():.9g}f}};\n")
+    f.write("static const float xs_gain_out_b[4] = {" + ",".join(f"{x:.9g}f" for x in sd["sig_net.gain_dense_out.bias"].tolist()) + "};\n")
+print(f"int8: {w_total} pesos = {w_total/1024:.1f} KiB + {rows_total} escalas float = {rows_total*4/1024:.1f} KiB")
+
+# ---- referência em PyTorch (pesos arredondados, sem dither)
+fargan.n = lambda x: torch.clamp(x, -1., 1.)
+m = fargan.FARGAN(softquant=False, sizes=ck["sizes"]); m.load_state_dict(sd_ref); m.eval()
+feats = np.fromfile(a.features, dtype="float32").reshape(-1, a.nb_features)[:, :20]
+T = a.frames; f = np.ascontiguousarray(feats[a.start:a.start + T + 4]).astype(np.float32)
+per = np.rint(256. / 2 ** (np.clip(f[:, 18], -10, 10) + 1.5)).clip(32, 255).astype("int64")
+with torch.no_grad(): sig, _ = m(torch.tensor(f)[None], torch.tensor(per)[None], T)
+f.tofile(os.path.join(a.out, "test_in.f32")); sig[0].numpy().astype(np.float32).tofile(os.path.join(a.out, "test_ref.f32"))
+print("referência:", sig.shape, "rms", float(sig.pow(2).mean().sqrt()))
