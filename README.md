@@ -29,7 +29,7 @@ A escuta foi feita pelo autor (uma pessoa), não é um teste com ouvintes. O som
 | Acústico | 270.081 par., 5 a 8 bits | 270.081 par., **4 bits** (131 KiB) |
 | Vocoder | FARGAN 816.597 par. (do PiVo) | **xxs 109.733 par.**, int8 (107 KiB), treinado do zero |
 | Custo do vocoder | ~299 MMAC/s | **~39,6 MMAC/s** |
-| Runtime | MLX / ONNX | **C puro** (ativações int8, matemática racional), **PyTorch**, **MLX**, **WebAssembly** |
+| Runtime | MLX / ONNX | **C puro** (ativações int8, matemática racional), **PyTorch**, **MLX**, **JavaScript**, **WebAssembly** |
 | Alvo | Mac, navegador | **ESP32-S3** (e qualquer CPU com C) |
 
 Variantes intermediárias que também foram treinadas e estão em `training/sizes.py`: **s** (262 mil par., 90 MMAC/s) e **xs** (160 mil par., 56 MMAC/s).
@@ -108,6 +108,23 @@ python check.py                                                                 
 O acústico (4 bits desquantizados) e o vocoder xxs (int8 desquantizado) rodam em float. Medido por `check.py`: as features batem com a referência do C/MLX (erro rms relativo 2,5e-7, 229 quadros) e o vocoder MLX bate com o PyTorch (1,1e-6).
 O vocoder em PyTorch fica a ~1,2% (rms relativo) do modelo de treino com os pesos int8 simulados (`weights/vocoder-xxs-int8sim.pth`, com o ruído de quantização do treino desligado); o áudio tem o mesmo rms (4205 contra 4209). O vocoder é recursivo e amplifica diferenças de arredondamento.
 Eles não rodam as ativações int8 do C, então o áudio não é idêntico amostra a amostra ao do firmware (rms igual, 4203 contra 4205).
+
+**Em JavaScript** (`js/` e `web/public/pingo.js`, navegador e Node ≥ 18, sem dependências; usa o mesmo `.wasm` do demo):
+
+```bash
+node js/cli.mjs "Olá, eu sou a voz da SemFence." -o saida.wav --voice F_s4      # ou M_sm4, --speed 1.1
+node js/check.mjs                                                                # 229 quadros, rms 4203 e 30 tokens, como no C
+```
+
+```js
+import { Dizione } from "./web/public/assets/dizione/engine.js";
+import { PingoEdge } from "./web/public/pingo.js";
+const pingo = await PingoEdge.create({ wasm: bytesDoWasm, dizione: new Dizione(lexiconTsv, openTable) });
+const { audio, sampleRate } = pingo.speak("Olá!", { voice: 0, speed: 1 });         // Float32Array mono 16 kHz
+for (const s of pingo.stream(textoLongo)) tocar(s.audio);                           // frase por frase
+```
+
+No Node, `loadDizione()` (`web/public/assets/dizione/node.js`) carrega o dicionário do disco. Medido no Node 24 num Mac: 3,3 s de áudio em 0,06 s (~57× o tempo real). Os tokens do fonemizador em JS são idênticos aos do Python nas frases que conferi (3).
 
 **No navegador** (`web/public/`, o mesmo C compilado para WebAssembly, 308 KB, sem ONNX Runtime):
 
