@@ -57,8 +57,8 @@ python3 tools/pcm_from_serial.py log.txt saida.wav
 ## Variantes
 
 - `variants/xs_weights.h`: vocoder xs (160 mil parâmetros, 56 MMAC/s). Troque `main/xs_weights.h` e ajuste `TS_PCM_RMS_EXPECTED`.
-- `variants/ac_weights_8bit.h`: acústico em 8 bits (262 KiB). Com ele a frase de teste dura 248 quadros (em 4 bits, 229: as durações previstas
-  ficam ~8% mais curtas, a fala sai um pouco mais rápida; o parâmetro de velocidade compensa).
+- `variants/ac_weights_8bit.h`: acústico em 8 bits (262 KiB). Com ele a frase de teste dura 248 quadros (em 4 bits, 229: nesta frase as durações
+  previstas ficam 8% mais curtas; na média de 21 frases a diferença é de só −2,2%; o parâmetro de velocidade compensa).
 
 ## Se o fator de tempo real ficar abaixo de 1
 

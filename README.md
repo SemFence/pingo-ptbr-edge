@@ -54,7 +54,7 @@ A perda espectral também não é qualidade percebida; a decisão do autor pelo 
 ## Acústico em 4 bits
 
 Quantização pós-treino, simétrica, por linha (valores −7..7, escala float por linha), dois pesos por byte. Apenas os pesos 2D são quantizados; vetores ficam em float.
-Efeito colateral medido: as **durações previstas ficam ~8% mais curtas** (229 contra 248 quadros na frase de teste), então a fala sai um pouco mais rápida; o parâmetro de velocidade compensa.
+Efeito colateral medido: as **durações previstas ficam um pouco mais curtas**: −2,2% no total de 21 frases (12.286 contra 12.560 quadros do pingo-ptbr original; por frase, de −7% a +1%). A frase de teste é um dos piores casos (229 contra 248 quadros, −8% contra o acústico em 8 bits). A fala sai um pouco mais rápida; o parâmetro de velocidade compensa se incomodar.
 Em 5 bits as durações sobem 2 a 5%, em 6 bits caem ~1,5%, em 8 bits ±0,6%. Por isso a comparação objetiva das características não é direta e a escolha de 4 bits foi de ouvido.
 
 ## Tamanho no ESP32-S3

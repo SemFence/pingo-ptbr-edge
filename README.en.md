@@ -46,7 +46,7 @@ Caveat: xxs saw **twice the data** of xs (500 k vs 250 k sequences), so beating 
 ## 4-bit acoustic model
 
 Post-training, symmetric, per-row quantization (values −7..7, one float scale per row), two weights per byte; only 2-D weights are quantized, vectors stay float.
-Measured side effect: **predicted durations get ~8% shorter** (229 vs 248 frames on the test sentence), so speech comes out a bit faster; the speed parameter compensates.
+Measured side effect: **predicted durations get slightly shorter**: −2.2% in total over 21 sentences (12,286 vs 12,560 frames from the original pingo-ptbr; per sentence from −7% to +1%). The test sentence is one of the worst cases (229 vs 248 frames, −8% against the 8-bit acoustic model). Speech comes out a bit faster; the speed parameter compensates if it bothers you.
 At 5 bits durations grow 2 to 5%, at 6 bits they shrink ~1.5%, at 8 bits ±0.6%, so the objective feature comparison is not direct and 4 bits was chosen by ear.
 
 ## Size on the ESP32-S3
