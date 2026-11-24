@@ -9,6 +9,10 @@ O pingo original tem 1.086.678 parâmetros, dos quais 817 mil são o vocoder. Aq
 > **Status honesto.** O firmware **compila para esp32s3** e o mesmo código roda no Mac com a mesma saída da referência, mas **nunca foi executado numa placa**.
 > Não há medida de tempo real no ESP32-S3, de uso real de RAM nem de WER desta edição. O que está medido e o que é estimativa está separado abaixo.
 > Se você rodar numa placa, o que `esp32/pingo_bench` imprime pela serial é exatamente o dado que falta.
+>
+> Poucos parâmetros **não** garantem que o modelo seja viável num microcontrolador: contam também RAM, operações suportadas, latência e consumo de energia. Esta página só afirma o que foi medido no Mac ou no build.
+
+**Atenção aos números:** os valores desta página (acústico 270.081 em 4 bits, vocoder xxs 109.733 em int8) são da edição **edge**. A página do [pingo-ptbr](https://huggingface.co/semfence/pingo-ptbr) descreve o modelo original (1.086.678 parâmetros, vocoder de 816.597), que é outro.
 
 ## Ouça
 
@@ -79,6 +83,7 @@ Medido (no Mac ou no build):
 
 **Não medido:**
 - Fator de tempo real no ESP32-S3. A conta (≈ 49 MMAC/s de trabalho por segundo de áudio contra um S3 a 240 MHz executando laços escalares) sugere que ele pode ficar abaixo de 1× no começo; os próximos passos (kernel int8 com o SIMD do S3 via ESP-NN, acústico e vocoder em dois núcleos, esparsificar e retreinar) estão em `esp32/pingo_bench/README.md`. Nada disso foi testado.
+- Consumo de energia (não há medida alguma).
 - Uso real de heap, o efeito do cache de dados de 64 KB e o custo do `printf` de float.
 - WER desta edição (o do pingo-ptbr, 0,86% / 0,81% no MiniMax `pt`, **não** vale aqui: o vocoder e a quantização do acústico são outros).
 - Qualquer teste de escuta com várias pessoas.
