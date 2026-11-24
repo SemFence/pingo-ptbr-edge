@@ -1,4 +1,4 @@
-/* pingo em C puro: fonemas -> acústico -> vocoder xs -> PCM s16 16 kHz.   ./pingo_c ac_test_in.i32 out.s16 [velocidade] */
+/* pingo in plain C: phonemes -> acoustic model -> xxs vocoder -> 16 kHz s16 PCM.   ./pingo_c ac_test_in.i32 out.s16 [speed] */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,7 +17,7 @@ int main(int argc, char **argv) {
     double t0 = now();
     ac_enc_ws_bind(&ws, wsbuf, Ln); if (ac_encode(&ws, tok, st, voice, Ln, enc, ld, &macs)) { fprintf(stderr, "frase longa\n"); return 1; }
     int T = ac_durations(ld, tok, mask, Ln, speed, dur); if (T > MAXFR) { fprintf(stderr, "frase longa (%d quadros)\n", T); return 1; }
-    static ac_dec_state ds; ac_dec_init(&ds); float *f = feats + 3 * XS_NF; int t = 0;       /* 3 quadros de folga à frente */
+    static ac_dec_state ds; ac_dec_init(&ds); float *f = feats + 3 * XS_NF; int t = 0;       /* 3 frames of padding at the front */
     for (int i = 0; i < Ln; i++) for (int k = 0; k < dur[i]; k++, t++) {
         float fr = ((float)k + 0.5f) / (float)dur[i], ph[4] = { 2 * fr - 1, sinf(3.14159265f * fr), cosf(3.14159265f * fr), logf(1.f + dur[i]) / logf(1.f + AC_CFG_MAX_TOKEN_FRAMES) };
         ac_dec_frame(&ds, enc + i * AC_W, ph, t, f + t * XS_NF);

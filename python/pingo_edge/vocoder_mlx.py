@@ -1,4 +1,4 @@
-"""Vocoder xxs (FARGAN reduzido) em MLX, com os pesos int8 do firmware desquantizados. Mesma conta de c/fargan_xs.c, em float."""
+"""xxs vocoder (reduced FARGAN) in MLX, with the firmware's int8 weights dequantized. Same computation as c/fargan_xs.c, in float."""
 import numpy as np
 import mlx.core as mx
 from scipy.signal import lfilter
@@ -49,7 +49,7 @@ class Vocoder:
         return sig, mx.concatenate([exc[40:], sig]), h1, h2, h3, tmp
 
     def __call__(self, feats):
-        """feats (T,20) float32 -> áudio 16 kHz float32 (com de-ênfase 0,85)."""
+        """feats (T,20) float32 -> 16 kHz float32 audio (with the 0.85 de-emphasis)."""
         sz = self.sz; C = sz["C"]
         feats = np.asarray(feats, np.float32)
         fa = np.concatenate([np.repeat(feats[:1], 3, 0), feats, feats[-1:]])

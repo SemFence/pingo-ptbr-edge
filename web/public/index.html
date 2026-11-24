@@ -253,7 +253,7 @@ $("text").addEventListener("keydown", (event) => {
 });
 
 setStatus("Carregando o modelo e o fonemizador…");
-// ?provider=wasm forces the CPU path (to compare it with WebGPU).
+// The edge build has a single runtime (C compiled to WebAssembly); the provider argument is ignored.
 worker.postMessage({ type: "load", provider: new URLSearchParams(location.search).get("provider") });
 </script>
 </body>

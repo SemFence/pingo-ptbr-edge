@@ -24,8 +24,8 @@ export class Phonemes {
     get length() { return this.symbols.length; }
     toString() { return this.symbols.map((s, i) => (this.stress[i] ? "ˈ" : "") + s).join(" "); }
 }
-// Siglas em maiúsculas (2 a 5 letras) são soletradas: GPU, CPU, USB. As de SPELLED são soletradas mesmo sendo
-// também uma palavra do léxico (IA, TI); as de AS_WORD são lidas como palavra (PIX, ONU, NASA).
+// Upper-case acronyms (2 to 5 letters) are spelled out: GPU, CPU, USB. Those in SPELLED are spelled out even though they are
+// also a lexicon word (IA, TI); those in AS_WORD are read as a word (PIX, ONU, NASA).
 const SPELLED = new Set("ia ti tv pc rg ui ux ai ue eua".split(" "));
 const AS_WORD = new Set(("onu otan nasa fifa unesco unicef pix enem sus cep detran ibama inmetro sebrae senai sesc sesi usp unicamp " +
     "embrapa anatel anvisa aneel inpe opep ok").split(" "));

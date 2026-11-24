@@ -1,8 +1,8 @@
-"""Partes sem framework (numpy): durações em quadros e sinais de fase. Mesmas regras de c/acoustic.c e de pingo_mlx.acoustic_features."""
+"""Framework-free parts (numpy): durations in frames and phase signals. Same rules as c/acoustic.c and pingo_mlx.acoustic_features."""
 import math
 import numpy as np
 
-PHONE_LIMIT, FIRST_PHONE_LIMIT = 20, 17      # quadros de 10 ms: percentil 95 das vogais e mediana do 1º fonema da fala
+PHONE_LIMIT, FIRST_PHONE_LIMIT = 20, 17      # 10 ms frames: 95th percentile of vowel length and median of the first phone of an utterance
 
 
 def durations(log_dur, ids, phone_mask, max_token_frames, speed=1.0):
@@ -11,7 +11,7 @@ def durations(log_dur, ids, phone_mask, max_token_frames, speed=1.0):
     if phone_mask.any(): cap[int(np.argmax(phone_mask))] = max(1, round(FIRST_PHONE_LIMIT / speed))
     d = np.minimum(d, cap); d = np.where(phone_mask, np.maximum(d, 1), d); d = np.minimum(d, max_token_frames)
     d[np.asarray(ids) == 0] = 0
-    if d.sum() > 3000: raise ValueError("texto longo demais: divida em frases")
+    if d.sum() > 3000: raise ValueError("text too long: split it into sentences")
     return d
 
 

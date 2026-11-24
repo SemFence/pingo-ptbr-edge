@@ -1,5 +1,5 @@
-/* pingo-ptbr edge no navegador: o mesmo acústico (4 bits) + vocoder xxs int8 em C, compilado para WebAssembly (sem glue JS).
- * JS preenche pingo_tok/pingo_stress/pingo_mask (L entradas), chama pingo_speak e lê pingo_pcm (float, 16 kHz, já com de-ênfase 0,85). */
+/* pingo-ptbr edge in the browser: the same 4-bit acoustic model + int8 xxs vocoder in C, compiled to WebAssembly (no JS glue).
+ * JS fills pingo_tok/pingo_stress/pingo_mask (L entries), calls pingo_speak and reads pingo_pcm (float, 16 kHz, with the 0.85 de-emphasis applied). */
 #include <math.h>
 #include <string.h>
 #include "acoustic.h"
@@ -17,7 +17,7 @@ EXPORT int *pingo_mask(void) { return mask; }
 EXPORT float *pingo_pcm(void) { return pcm; }
 EXPORT int pingo_maxtok(void) { return AC_MAXTOK; }
 
-/* retorna o número de amostras, ou -1 (frase com tokens demais) / -2 (mais de 30 s) */
+/* returns the number of samples, or -1 (too many tokens) / -2 (longer than 30 s) */
 EXPORT int pingo_speak(int L, int voice, float speed) {
     if (L < 1 || L > AC_MAXTOK) return -1;
     static ac_enc_ws ws; ac_enc_ws_bind(&ws, wsbuf, L); long macs = 0;

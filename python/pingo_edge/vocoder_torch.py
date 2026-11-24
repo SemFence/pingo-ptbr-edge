@@ -1,5 +1,5 @@
-"""Vocoder xxs (FARGAN reduzido) em PyTorch, com os pesos int8 do firmware desquantizados. Mesma conta de c/fargan_xs.c, em float.
-Não usa o código de treino (weight_norm, soft_quant): é só inferência."""
+"""xxs vocoder (reduced FARGAN) in PyTorch, with the firmware's int8 weights dequantized. Same computation as c/fargan_xs.c, in float.
+It does not use the training code (weight_norm, soft_quant): inference only."""
 import numpy as np
 import torch
 from scipy.signal import lfilter
@@ -24,16 +24,16 @@ class Vocoder:
         e = w["pembed"][torch.tensor(per - 32)]
         d1 = torch.tanh(torch.cat([fa, e], -1) @ w["fdense1"].T)                          # (T+4, d1)
         T = fa.shape[0] - 4
-        cat = torch.cat([d1[2:2 + T], d1[3:3 + T], d1[4:4 + T]], -1)                      # camadas no tempo: n+2, n+3, n+4
+        cat = torch.cat([d1[2:2 + T], d1[3:3 + T], d1[4:4 + T]], -1)                      # time steps n+2, n+3, n+4
         c2 = torch.tanh(cat @ w["fconv1"].T)
         return torch.tanh(c2 @ w["fdense2"].T)                                            # (T, 4*C)
 
     @torch.no_grad()
     def __call__(self, feats):
-        """feats (T,20) float32 -> áudio 16 kHz float32 (com de-ênfase 0,85)."""
+        """feats (T,20) float32 -> 16 kHz float32 audio (with the 0.85 de-emphasis)."""
         w, sz = self.w, self.sz; C, F, H1, H2, H3 = sz["C"], sz["F"], sz["H1"], sz["H2"], sz["H3"]
         feats = np.asarray(feats, np.float32)
-        fa = np.concatenate([np.repeat(feats[:1], 3, 0), feats, feats[-1:]])             # quadros n..n+4 de cada saída
+        fa = np.concatenate([np.repeat(feats[:1], 3, 0), feats, feats[-1:]])             # frames n..n+4 of each output frame
         per = np.rint(256 / 2 ** (np.clip(fa[:, 18], -10, 10) + 1.5)).clip(32, 255).astype(np.int64)
         T = len(feats); cond = self._cond(torch.tensor(fa), per)
         exc = torch.zeros(256); h1, h2, h3 = torch.zeros(H1), torch.zeros(H2), torch.zeros(H3); fst = torch.zeros(2 * 40 + C + 4)

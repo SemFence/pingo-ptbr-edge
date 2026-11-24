@@ -1,7 +1,7 @@
-"""Frases do pingo com o vocoder original e com os vocoders leves (s, xs), mesmas features previstas pelo acústico.
+"""Pingo sentences with the original vocoder and with the light vocoders (s, xs, xxs), same features predicted by the acoustic model.
   python3 pingo_small.py OUT_DIR [--voices F_s4,M_sm4]
-Alinhamento: o FARGAN torch descarta 2 quadros à esquerda e usa 3 quadros no conv (centro = j), então a entrada é
-[3 quadros de preenchimento] + feats + [1], e o quadro n da saída corresponde a feats[n] (igual ao pivo/pingo MLX)."""
+Alignment: the torch FARGAN drops 2 frames on the left and uses 3 frames in the conv (centre = j), so the input is
+[3 padding frames] + feats + [1], and output frame n corresponds to feats[n] (same as pivo/pingo MLX)."""
 import sys, os, argparse, types, numpy as np, torch, soundfile as sf
 sys.modules.setdefault("torchaudio", types.ModuleType("torchaudio"))
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
@@ -50,6 +50,6 @@ for voice in a.voices.split(","):
     for k, t in FRASES.items():
         for name, be in models.items():
             w = sp.speak(be, t, voice=voice)
-            w = w * (0.5 / max(float(np.abs(w).max()), 1e-6))          # mesmo volume em todos, para comparar de ouvido
+            w = w * (0.5 / max(float(np.abs(w).max()), 1e-6))          # same volume for all, to compare by ear
             sf.write(f"{a.out}/{k}_{voice}_{name}.wav", w, sp.RATE)
         print(k, voice, "ok", flush=True)

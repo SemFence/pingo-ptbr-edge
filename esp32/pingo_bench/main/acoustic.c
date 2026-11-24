@@ -2,7 +2,7 @@
 #include <string.h>
 #include "acoustic.h"
 
-#if AC_WBITS == 4          /* pesos em 4 bits: dois por byte; w(p, idx) devolve o peso de índice plano idx */
+#if AC_WBITS == 4          /* 4-bit weights: two per byte; aw(p, idx) returns the weight at flat index idx */
 typedef uint8_t ac_wt;
 static inline float aw(const ac_wt *p, long idx) { uint8_t b = p[idx >> 1]; return (float)((idx & 1) ? (int8_t)b >> 4 : (int8_t)(b << 4) >> 4); }
 #else
@@ -39,7 +39,7 @@ static void rmsnorm(const float *x, const float *w, float *y, int n) {
     float ss = 0.f; for (int i = 0; i < n; i++) ss += x[i] * x[i];
     float r = 1.f / sqrtf(ss / n + 1e-6f); for (int i = 0; i < n; i++) y[i] = x[i] * r * w[i];
 }
-static void rope(float *x, int heads, int pos) {            /* x: heads x AC_HD; metades [0,hd/2) e [hd/2,hd) */
+static void rope(float *x, int heads, int pos) {            /* x: heads x AC_HD; halves [0,hd/2) and [hd/2,hd) */
     int d = AC_HD / 2;
     for (int h = 0; h < heads; h++) for (int i = 0; i < d; i++) {
         float ang = (float)pos * powf(10000.f, -(float)i / d), c = cosf(ang), s = sinf(ang);
@@ -47,7 +47,7 @@ static void rope(float *x, int heads, int pos) {            /* x: heads x AC_HD;
         x[h * AC_HD + i] = a * c - b * s; x[h * AC_HD + d + i] = a * s + b * c;
     }
 }
-/* atenção de uma consulta (AC_HEADS cabeças) sobre n chaves; a chave t está na linha (j0+t) % mod de K/V (mod=0: linha j0+t). */
+/* attention of one query (AC_HEADS heads) over n keys; key t is at row (j0+t) % mod of K/V (mod=0: row j0+t). */
 static void attend(const float *q, const float (*K)[AC_KVW], const float (*V)[AC_KVW], int j0, int n, int mod, float *ctx, long *macs) {
     float sc[AC_MAXTOK > AC_WIN ? AC_MAXTOK : AC_WIN]; const int rep = AC_CFG_HEADS / AC_CFG_KV_HEADS;
     for (int h = 0; h < AC_CFG_HEADS; h++) {
@@ -84,10 +84,10 @@ int ac_encode(ac_enc_ws *ws, const int *tok, const int *stress, int voice, int L
     for (int blk = 0; blk < AC_CFG_TEXT_LAYERS; blk++) {
         if (blk % 2 == 0) {
             const attn_t *b = &ENC_ATT[blk / 2]; float xn[AC_W], q[AC_W], ctx[AC_W], o[AC_W];
-            for (int t = 0; t < Ln; t++) {                                    /* passo 1: k e v de todos os tokens */
+            for (int t = 0; t < Ln; t++) {                                    /* pass 1: k and v of all tokens */
                 rmsnorm(ws->x[t], b->n1, xn, AC_W); mv(&b->k, xn, ws->k[t], macs); mv(&b->v, xn, ws->v[t], macs); rope(ws->k[t], AC_CFG_KV_HEADS, t);
             }
-            for (int t = 0; t < Ln; t++) {                                    /* passo 2: atenção bidirecional */
+            for (int t = 0; t < Ln; t++) {                                    /* pass 2: bidirectional attention */
                 rmsnorm(ws->x[t], b->n1, xn, AC_W); mv(&b->q, xn, q, macs); rope(q, AC_CFG_HEADS, t);
                 attend(q, ws->k, ws->v, 0, Ln, 0, ctx, macs); mv(&b->o, ctx, o, macs);
                 for (int i = 0; i < AC_W; i++) ws->x[t][i] += o[i];
@@ -101,14 +101,14 @@ int ac_encode(ac_enc_ws *ws, const int *tok, const int *stress, int voice, int L
                 for (int k = 0; k < K; k++) { int s = t + (k - K / 2) * dil; for (int i = 0; i < AC_W; i++) cat[k * AC_W + i] = (s >= 0 && s < Ln) ? ws->t[s][i] : 0.f; }
                 mv(&b->conv, cat, y, macs); rmsnorm(y, b->n2, yn, AC_W);
                 for (int i = 0; i < AC_W; i++) y[i] = silu(yn[i]);
-                for (int i = 0; i < AC_W; i++) enc[t * AC_W + i] = y[i];          /* guarda o termo residual fora de x para não ler x já alterado */
+                for (int i = 0; i < AC_W; i++) enc[t * AC_W + i] = y[i];          /* keep the residual term outside x so we never read an already-modified x */
             }
             for (int t = 0; t < Ln; t++) for (int i = 0; i < AC_W; i++) ws->x[t][i] += enc[t * AC_W + i];
         }
     }
     for (int t = 0; t < Ln; t++) rmsnorm(ws->x[t], ac_text_norm_weight, enc + t * AC_W, AC_W);
-    /* preditor de durações */
-    float (*h)[AC_W] = ws->x, (*u)[AC_W] = ws->t;                             /* reaproveita a área de trabalho: x já foi copiado para enc */
+    /* duration predictor */
+    float (*h)[AC_W] = ws->x, (*u)[AC_W] = ws->t;                             /* reuse the workspace: x has already been copied to enc */
     for (int t = 0; t < Ln; t++) { float tmp[AC_CFG_DUR_WIDTH]; mv(&DUR_IN, enc + t * AC_W, tmp, macs); for (int i = 0; i < AC_CFG_DUR_WIDTH; i++) h[t][i] = silu(tmp[i] + ac_durations_in_proj_bias[i]); }
     for (int l = 0; l < 2; l++) {
         for (int t = 0; t < Ln; t++) rmsnorm(h[t], DUR_NORM[l], u[t], AC_CFG_DUR_WIDTH);
@@ -121,7 +121,7 @@ int ac_encode(ac_enc_ws *ws, const int *tok, const int *stress, int voice, int L
             }
             *macs += (long)AC_CFG_DUR_WIDTH * 3;
             mv(&DUR_PW[l], dw, pw, macs);
-            for (int c = 0; c < AC_CFG_DUR_WIDTH; c++) RES(t, c) = silu(pw[c] + DUR_PW_B[l][c]);   /* termo residual: h só muda depois, o dw dos vizinhos ainda lê u */
+            for (int c = 0; c < AC_CFG_DUR_WIDTH; c++) RES(t, c) = silu(pw[c] + DUR_PW_B[l][c]);   /* residual term: h only changes later, the neighbours' dw still reads u */
         }
         for (int t = 0; t < Ln; t++) for (int c = 0; c < AC_CFG_DUR_WIDTH; c++) h[t][c] += RES(t, c);
     }
@@ -136,7 +136,7 @@ int ac_durations(const float *logdur, const int *tok, const int *mask, int Ln, f
     for (int i = 0; i < Ln; i++) {
         float v = logdur[i]; v = v < 0.f ? 0.f : (v > cap ? cap : v);
         int d = (int)rintf(expm1f(v) / speed);
-        if (mask[i]) { int c2 = (i == first) ? flim : lim; if (d > c2) d = c2; }   /* limite de duração por fonema (igual ao pingo_mlx) */
+        if (mask[i]) { int c2 = (i == first) ? flim : lim; if (d > c2) d = c2; }   /* per-phone duration limit (same as pingo_mlx) */
         if (mask[i] && d < 1) d = 1;
         if (d > AC_CFG_MAX_TOKEN_FRAMES) d = AC_CFG_MAX_TOKEN_FRAMES;
         if (tok[i] == 0) d = 0;

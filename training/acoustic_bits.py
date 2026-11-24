@@ -1,4 +1,4 @@
-"""Testa o acústico do pingo com pesos de 8/6/5/4 bits (simulado, por linha): erro das features e áudio com o vocoder xxs.
+"""Tests the pingo acoustic model with 8/6/5/4-bit weights (simulated, per row): feature error and audio with the xxs vocoder.
   ../../pivo-ptbr/.venv-mlx/bin/python acoustic_bits.py OUT_DIR"""
 import sys, os, types, numpy as np, torch, soundfile as sf
 sys.modules.setdefault("torchaudio", types.ModuleType("torchaudio"))

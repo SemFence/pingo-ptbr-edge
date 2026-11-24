@@ -1,5 +1,5 @@
-// Confere a versão JS contra o C: o mesmo .wasm e a mesma frase de teste (c/ac_test_in.i32) devem dar 229 quadros e rms 4203;
-// e o texto "Olá, eu sou a voz da SemFence." fonemizado em JS deve dar a mesma entrada do Python (30 tokens).   node js/check.mjs
+// Checks the JS version against the C code: the same .wasm and the same test sentence (c/ac_test_in.i32) must give 229 frames and rms 4203;
+// and the text "Olá, eu sou a voz da SemFence." phonemized in JS must give the same input as Python (30 tokens).   node js/check.mjs
 import { readFileSync } from "node:fs";
 import { loadDizione } from "../web/public/assets/dizione/node.js";
 import { PingoEdge } from "../web/public/pingo.js";

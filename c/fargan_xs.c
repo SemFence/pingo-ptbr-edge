@@ -3,7 +3,7 @@
 #include "fargan_xs.h"
 
 static inline float clamp1(float x) { return x < -1.f ? -1.f : (x > 1.f ? 1.f : x); }
-#ifdef XS_FAST_MATH   /* aproximação racional (a do Opus): erro máx 6e-5 em tanh, 3e-5 em sigmoid; ~10 ciclos em vez de centenas */
+#ifdef XS_FAST_MATH   /* rational approximation (Opus's): max error 6e-5 in tanh, 3e-5 in sigmoid; ~10 cycles instead of hundreds */
 static inline float tanh_(float x) {
     float x2 = x * x, num = (0.60863042f * x2 + 96.39235687f) * x2 + 952.52801514f, den = (11.88600922f * x2 + 413.36801147f) * x2 + 952.72399902f;
     float r = num * x / den; return r < -1.f ? -1.f : (r > 1.f ? 1.f : r);
@@ -14,7 +14,7 @@ static inline float tanh_(float x) { return tanhf(x); }
 static inline float sigmoidf_(float x) { return 1.f / (1.f + expf(-x)); }
 #endif
 
-/* y[i] = escala[i] * sum_j w[i][j] * x[j]   (w int8 por linha, x float) */
+/* y[i] = scale[i] * sum_j w[i][j] * x[j]   (w per-row int8, x float) */
 static void mv(xs_state *st, const int8_t *w, const float *s, int rows, int cols, const float *x, float *y) {
     for (int i = 0; i < rows; i++) {
         const int8_t *r = w + (long)i * cols; float acc = 0.f;
@@ -42,14 +42,14 @@ static void glu(xs_state *st, const int8_t *w, const float *s, int n, float *x) 
 static void dense1_frame(xs_state *st, const float *f, int per, float *out) {
     float in[XS_NF + XS_PE];
     memcpy(in, f, XS_NF * sizeof(float));
-    const int8_t *e = xs_pembed_w + (long)(per - 32) * XS_pembed_COLS;               /* embedding int8 por linha */
+    const int8_t *e = xs_pembed_w + (long)(per - 32) * XS_pembed_COLS;               /* per-row int8 embedding */
     for (int i = 0; i < XS_PE; i++) in[XS_NF + i] = (float)e[i] * xs_pembed_s[per - 32];
     MV(st, fdense1, in, out);
     for (int i = 0; i < XS_D1; i++) out[i] = tanh_(out[i]);
 }
 
 static void gru(xs_state *st, const int8_t *wi, const float *si, const int8_t *wh, const float *sh, int nin, int nh, const float *x, float *h) {
-    float gi[3 * 64 * 3], gh[3 * 64 * 3];   /* até 3*H com H <= 192 */
+    float gi[3 * 64 * 3], gh[3 * 64 * 3];   /* up to 3*H with H <= 192 */
     mv(st, wi, si, 3 * nh, nin, x, gi); mv(st, wh, sh, 3 * nh, nh, h, gh);
     for (int i = 0; i < nh; i++) {
         float r = sigmoidf_(gi[i] + gh[i]), z = sigmoidf_(gi[nh + i] + gh[nh + i]);
@@ -60,7 +60,7 @@ static void gru(xs_state *st, const int8_t *wi, const float *si, const int8_t *w
 
 void xs_frame(xs_state *st, const float *feats, float *out) {
     int per[5]; for (int j = 0; j < 5; j++) per[j] = period_of(feats[j * XS_NF + 18]);
-    /* condicionamento: dense1 dos quadros n+2, n+3, n+4 (anel), conv k=3, dense2 */
+    /* conditioning: dense1 of frames n+2, n+3, n+4 (ring), k=3 conv, dense2 */
     if (!st->primed) { for (int j = 0; j < 2; j++) dense1_frame(st, feats + (2 + j) * XS_NF, per[2 + j], st->dense1[j + 1]); st->primed = 1; }
     memmove(st->dense1[0], st->dense1[1], 2 * XS_D1 * sizeof(float));
     dense1_frame(st, feats + 4 * XS_NF, per[4], st->dense1[2]);
@@ -88,7 +88,7 @@ void xs_frame(xs_state *st, const float *feats, float *out) {
         GLU(st, fwc0_glu, XS_F, fw); for (int i = 0; i < XS_F; i++) fw[i] = clamp1(fw[i]);
         memcpy(st->fwc_state, tmp, XS_FIN * sizeof(float));
         float pgl[4], pg[4]; MV(st, gain_out, fw, pgl); for (int i = 0; i < 4; i++) pg[i] = sigmoidf_(pgl[i] + xs_gain_out_b[i]);
-        /* três GRUs com GLU */
+        /* three GRUs with GLU */
         float in1[XS_F + 2 * XS_SUB], o1[XS_H1], in2[XS_H1 + 2 * XS_SUB], o2[XS_H2], in3[XS_H2 + 2 * XS_SUB], o3[XS_H3];
         memcpy(in1, fw, XS_F * sizeof(float)); for (int i = 0; i < XS_SUB; i++) { in1[XS_F + i] = pg[0] * fp[i]; in1[XS_F + XS_SUB + i] = prev[i]; }
         gru(st, xs_gru1_ih_w, xs_gru1_ih_s, xs_gru1_hh_w, xs_gru1_hh_s, XS_F + 2 * XS_SUB, XS_H1, in1, st->h1);

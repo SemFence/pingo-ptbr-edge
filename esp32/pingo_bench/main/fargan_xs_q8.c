@@ -1,10 +1,10 @@
 #include <math.h>
 #include <string.h>
 #include "fargan_xs.h"
-/* Variante com ATIVAÇÕES int8 (escala fixa 1/127, como o dither n() do treino) e acumulação int32. Pesos int8. */
+/* Variant with int8 ACTIVATIONS (fixed scale 1/127, like the training-time dither n()) and int32 accumulation. int8 weights. */
 
 static inline float clamp1(float x) { return x < -1.f ? -1.f : (x > 1.f ? 1.f : x); }
-#ifdef XS_FAST_MATH   /* aproximação racional (a do Opus): erro máx 6e-5 em tanh, 3e-5 em sigmoid; ~10 ciclos em vez de centenas */
+#ifdef XS_FAST_MATH   /* rational approximation (Opus's): max error 6e-5 in tanh, 3e-5 in sigmoid; ~10 cycles instead of hundreds */
 static inline float tanh_(float x) {
     float x2 = x * x, num = (0.60863042f * x2 + 96.39235687f) * x2 + 952.52801514f, den = (11.88600922f * x2 + 413.36801147f) * x2 + 952.72399902f;
     float r = num * x / den; return r < -1.f ? -1.f : (r > 1.f ? 1.f : r);
@@ -15,7 +15,7 @@ static inline float tanh_(float x) { return tanhf(x); }
 static inline float sigmoidf_(float x) { return 1.f / (1.f + expf(-x)); }
 #endif
 
-/* y[i] = escala[i] * sum_j w[i][j] * x[j]   (w int8 por linha, x float) */
+/* y[i] = scale[i] * sum_j w[i][j] * x[j]   (w per-row int8, x float) */
 static void mv(xs_state *st, const int8_t *w, const float *s, int rows, int cols, const float *x, float *y) {
     for (int i = 0; i < rows; i++) {
         const int8_t *r = w + (long)i * cols; float acc = 0.f;
@@ -30,7 +30,7 @@ static void mv(xs_state *st, const int8_t *w, const float *s, int rows, int cols
 static inline int8_t q8(float x) { float v = x * 127.f; v = v > 127.f ? 127.f : (v < -127.f ? -127.f : v); return (int8_t)lrintf(v); }
 #define INV127 (1.0f / 127.0f)
 
-/* y[i] = escala[i]/127 * sum_j w[i][j] * xq[j]    (int8 x int8 -> int32) */
+/* y[i] = scale[i]/127 * sum_j w[i][j] * xq[j]    (int8 x int8 -> int32) */
 static void mv8(xs_state *st, const int8_t *w, const float *s, int rows, int cols, const int8_t *xq, float *y) {
     for (int i = 0; i < rows; i++) {
         const int8_t *r = w + (long)i * cols; int32_t acc = 0;
@@ -49,7 +49,7 @@ static int period_of(float f18) {
     return v < 32 ? 32 : (v > 255 ? 255 : v);
 }
 
-static void dense1_frame(xs_state *st, const float *f, int per, float *out) {      /* entrada crua (não limitada): fica em float */
+static void dense1_frame(xs_state *st, const float *f, int per, float *out) {      /* raw (unclamped) input: stays float */
     float in[XS_NF + XS_PE];
     memcpy(in, f, XS_NF * sizeof(float));
     const int8_t *e = xs_pembed_w + (long)(per - 32) * XS_pembed_COLS;
@@ -58,7 +58,7 @@ static void dense1_frame(xs_state *st, const float *f, int per, float *out) {   
     for (int i = 0; i < XS_D1; i++) out[i] = tanh_(out[i]);
 }
 
-/* x (float, já limitado a [-1,1]) -> y = x * sigmoid(W x) */
+/* x (float, already clamped to [-1,1]) -> y = x * sigmoid(W x) */
 static void glu8(xs_state *st, const int8_t *w, const float *s, int n, float *x, const int8_t *xq) {
     float g[256]; mv8(st, w, s, n, n, xq, g);
     for (int i = 0; i < n; i++) x[i] *= sigmoidf_(g[i]);
@@ -108,7 +108,7 @@ void xs_frame(xs_state *st, const float *feats, float *out) {
         float pgl[4], pg[4]; MV8(st, gain_out, fwq, pgl); for (int i = 0; i < 4; i++) pg[i] = sigmoidf_(pgl[i] + xs_gain_out_b[i]);
         int8_t pfq[4][XS_SUB];
         for (int j = 0; j < 4; j++) for (int i = 0; i < XS_SUB; i++) pfq[j][i] = q8(pg[j] * (float)fpq[i] * INV127);
-        /* três GRUs com GLU */
+        /* three GRUs with GLU */
         int8_t in1[XS_F + 2 * XS_SUB], in2[XS_H1 + 2 * XS_SUB], in3[XS_H2 + 2 * XS_SUB], o1q[XS_H1], o2q[XS_H2], o3q[XS_H3]; float o1[XS_H1], o2[XS_H2], o3[XS_H3];
         memcpy(in1, fwq, XS_F); memcpy(in1 + XS_F, pfq[0], XS_SUB); memcpy(in1 + XS_F + XS_SUB, prevq, XS_SUB);
         gru8(st, xs_gru1_ih_w, xs_gru1_ih_s, xs_gru1_hh_w, xs_gru1_hh_s, XS_F + 2 * XS_SUB, XS_H1, in1, st->h1);

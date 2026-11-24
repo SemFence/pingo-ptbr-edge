@@ -1,4 +1,4 @@
-/* Confere o acústico em C contra o MLX e mede custo.  ./ac_test ac_test_in.i32 ac_test_ref.f32 */
+/* Checks the C acoustic model against MLX and measures its cost.  ./ac_test ac_test_in.i32 ac_test_ref.f32 */
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>

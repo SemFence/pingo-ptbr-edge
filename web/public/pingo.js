@@ -1,8 +1,8 @@
-// pingo-ptbr edge em JavaScript (navegador e Node): fonemizador (@semfence/dizione-ptbr) + o runtime em C compilado para WebAssembly.
-// Sem dependências. Uso:
-//   const pingo = await PingoEdge.create({ wasm: bytesDoWasm, dizione: new Dizione(lexiconTsv, openTable) });
+// pingo-ptbr edge in JavaScript (browser and Node): phonemizer (@semfence/dizione-ptbr) + the C runtime compiled to WebAssembly.
+// No dependencies. Usage:
+//   const pingo = await PingoEdge.create({ wasm: wasmBytes, dizione: new Dizione(lexiconTsv, openTable) });
 //   const { audio, sampleRate } = pingo.speak("Olá, eu sou a voz da SemFence.", { voice: 0, speed: 1 });   // Float32Array, mono, 16 kHz
-//   for (const s of pingo.stream(texto)) tocar(s.audio);     // frase por frase, quando o texto tem várias
+//   for (const s of pingo.stream(text)) play(s.audio);        // sentence by sentence, when the text has several
 import * as symbols from "./assets/dizione/symbols.js";
 import { makeTokenizer } from "./tokens.js";
 
@@ -12,7 +12,7 @@ const PEAK = 0.99;
 
 const ABBREVIATIONS = /(?:(?<![A-Za-zÀ-ÖØ-öø-ÿ0-9_])(?:dr|dra|prof|profa|sr|sra|srta|av|tel|obs|etc|ex|nº|vs)|(?<![A-Za-zÀ-ÖØ-öø-ÿ0-9_])[A-ZÀ-ÖØ-Ý])\.$/i;
 
-// Frases, sem quebrar depois de títulos, iniciais ou dentro de números (igual a tiny_voca.infer.sentences).
+// Sentences, without breaking after titles, initials or inside numbers (same as tiny_voca.infer.sentences).
 function sentences(text) {
   const parts = [];
   let current = "";
@@ -24,7 +24,7 @@ function sentences(text) {
   return parts.filter((part) => /[\p{L}\p{N}]/u.test(part));
 }
 
-// Um ponto final é acrescentado quando o texto termina sem pontuação (igual a tiny_voca.infer.finished).
+// A full stop is appended when the text ends without punctuation (same as tiny_voca.infer.finished).
 function finished(text) {
   const body = text.replace(/\s+$/, "");
   if (!body) return text;
@@ -33,7 +33,7 @@ function finished(text) {
   return marked ? text : body + ".";
 }
 
-// Termos em inglês reescritos como se falam, antes do fonemizador (igual a pingo/pronunciation.py).
+// English terms respelled the way they are said, before the phonemizer (same as pingo/pronunciation.py).
 const RESPELLING = [
   [/\bHugging ?Face\b/g, "Ráguin Feice"], [/\bGitHub\b/g, "Guit rub"], [/\bstartups?\b/gi, "istártape"],
   [/\bdeploy\b/gi, "diplói"], [/\bMVP\b/g, "ême vê pê"], [/\bAPI\b/g, "a pê i"], [/\bGPU\b/g, "gê pê ú"],
@@ -44,7 +44,7 @@ const RESPELLING = [
 ];
 const spoken = (text) => RESPELLING.reduce((t, [pattern, said]) => t.replace(pattern, said), text);
 
-// O fonemizador põe uma pausa entre as duas palavras de "Guit rub"; GitHub se fala numa palavra só e a vogal final é ɐ (igual a pronunciation.joined).
+// The phonemizer puts a pause between the two words of "Guit rub"; GitHub is said as one word and the final vowel is ɐ (same as pronunciation.joined).
 const JOIN = ["ɡ", "i", "t", "<sp>", "x", "u", "b"];
 function joined(result) {
   const drop = new Set();
@@ -62,7 +62,7 @@ function joined(result) {
 
 
 export class PingoEdge {
-  /** wasm: bytes (Uint8Array/ArrayBuffer) do pingo_edge.wasm; dizione: instância de Dizione já carregada. */
+  /** wasm: bytes (Uint8Array/ArrayBuffer) of pingo_edge.wasm; dizione: an already-loaded Dizione instance. */
   static async create({ wasm, dizione }) {
     const instance = (await WebAssembly.instantiate(wasm, {})).instance.exports;
     return new PingoEdge(instance, dizione);
@@ -73,9 +73,9 @@ export class PingoEdge {
     if (wasm._initialize) wasm._initialize();
     this.tokenize = makeTokenizer(symbols);
     const index = new Map(symbols.SYMBOLS.map((s, i) => [s, i]));
-    this.phoneIds = new Set([...symbols.PHONES, "<unk>"].map((s) => index.get(s)));   // fonemas e <unk>: únicos tokens com pelo menos 1 quadro
+    this.phoneIds = new Set([...symbols.PHONES, "<unk>"].map((s) => index.get(s)));   // phones and <unk>: the only tokens with at least 1 frame
     this.config = { max_tokens: wasm.pingo_maxtok(), sample_rate: 16000, voices: ["F_s4", "M_sm4"] };
-    this.synthesizeTokens(this.tokenize(dizione.pieces("Olá.")), 0, 1);               // aquece e confere
+    this.synthesizeTokens(this.tokenize(dizione.pieces("Olá.")), 0, 1);               // warm up and sanity-check
   }
 
   get sampleRate() { return 16000; }
@@ -88,10 +88,10 @@ export class PingoEdge {
     put(wasm.pingo_mask(), phones.ids.map((id) => (this.phoneIds.has(id) ? 1 : 0)));
     const samples = wasm.pingo_speak(n, voice, speed);
     if (samples < 0) throw new TooLong();
-    return new Float32Array(wasm.memory.buffer, wasm.pingo_pcm(), samples).slice();   // cópia: o buffer do wasm é reaproveitado
+    return new Float32Array(wasm.memory.buffer, wasm.pingo_pcm(), samples).slice();   // copy: the wasm buffer is reused
   }
 
-  // Uma fala tem no máximo max_tokens fonemas e 30 s; frases maiores são cortadas em vírgulas e depois em palavras.
+  // An utterance has at most max_tokens phones and 30 s; longer sentences are split at commas and then at words.
   *pieces(sentence, voice, speed) {
     const raw = this.tokenize(this.dizione.pieces(sentence));
     const result = raw && joined(raw);
@@ -110,18 +110,18 @@ export class PingoEdge {
     yield* this.pieces(words.slice(half).join(" "), voice, speed);
   }
 
-  /** Gera o áudio frase por frase: { index, total, phonemes, audio } com audio já limitado a 0,99. */
+  /** Generates the audio sentence by sentence: { index, total, phonemes, audio }, with audio already limited to a 0.99 peak. */
   *stream(text, { voice = 0, speed = 1, respelling = true } = {}) {
     const list = sentences(finished(respelling ? spoken(text) : text));
     let index = 0;
     for (const sentence of list) for (const piece of this.pieces(sentence, voice, speed)) { limitPeak(piece.audio); yield { index: index++, total: list.length, ...piece }; }
   }
 
-  /** Texto -> { audio: Float32Array (mono, 16 kHz), sampleRate, phonemes: [..] }. Lança erro se não há nada em português para ler. */
+  /** Text -> { audio: Float32Array (mono, 16 kHz), sampleRate, phonemes: [..] }. Throws if there is nothing in Portuguese to read. */
   speak(text, options = {}) {
     const chunks = [], phonemes = [];
     for (const s of this.stream(text, options)) { chunks.push(s.audio); phonemes.push(s.phonemes); }
-    if (!chunks.length) throw new Error("O pingo-ptbr só lê português do Brasil (pt-BR) por enquanto.");
+    if (!chunks.length) throw new Error("pingo-ptbr only reads Brazilian Portuguese (pt-BR) for now.");
     const audio = new Float32Array(chunks.reduce((sum, c) => sum + c.length, 0));
     let offset = 0;
     for (const c of chunks) { audio.set(c, offset); offset += c.length; }
@@ -129,14 +129,14 @@ export class PingoEdge {
   }
 }
 
-// O vocoder às vezes passa de 1,0, o que cortaria no arquivo de 16 bits: reduz o trecho todo nesse caso.
+// The vocoder sometimes exceeds 1.0, which would clip in a 16-bit file: scale the whole piece down in that case.
 function limitPeak(samples) {
   let loudest = 0;
   for (let i = 0; i < samples.length; i++) loudest = Math.max(loudest, Math.abs(samples[i]));
   if (loudest > PEAK) for (let i = 0; i < samples.length; i++) samples[i] *= PEAK / loudest;
 }
 
-/** Float32 mono -> arquivo WAV de 16 bits (Uint8Array). */
+/** Mono Float32 -> 16-bit WAV file (Uint8Array). */
 export function wavBytes(samples, sampleRate = 16000) {
   const out = new Uint8Array(44 + samples.length * 2), v = new DataView(out.buffer);
   const tag = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
