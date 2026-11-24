@@ -9,6 +9,10 @@ The original pingo has 1,086,678 parameters, 817 k of them the vocoder. Here the
 > **Honest status.** The firmware **builds for esp32s3** and the same code runs on a Mac with output matching the reference, but it has **never been run on a board**.
 > There is no real-time measurement on the ESP32-S3, no measured RAM use and no WER for this edition. What is measured and what is an estimate is separated below.
 > If you run it on a board, what `esp32/pingo_bench` prints over serial is exactly the missing data.
+>
+> A low parameter count does **not** make a model viable on a microcontroller: RAM, supported operations, latency and power draw matter too. This page only claims what was measured on a Mac or in the build.
+
+**Note on the numbers:** the figures on this page (acoustic 270,081 params in 4-bit, xxs vocoder 109,733 in int8) belong to the **edge** edition. The [pingo-ptbr](https://huggingface.co/semfence/pingo-ptbr) page describes the original model (1,086,678 parameters, 816,597 in the vocoder), which is a different one.
 
 ## Listen
 
@@ -71,6 +75,7 @@ Measured (on a Mac or in the build):
 
 **Not measured:**
 - Real-time factor on the ESP32-S3. The arithmetic (≈ 49 MMAC per second of audio against a 240 MHz S3 running scalar loops) suggests it may start below 1×; next steps (an int8 kernel with the S3 SIMD via ESP-NN, acoustic and vocoder on two cores, sparsify and retrain) are in `esp32/pingo_bench/README.md` and untested.
+- Power consumption (nothing measured).
 - Real heap use, the effect of the 64 KB data cache, the cost of float `printf`.
 - WER of this edition (pingo-ptbr's 0.86% / 0.81% on MiniMax `pt` does **not** apply: the vocoder and the acoustic quantization differ).
 - Any listening test with several people.
