@@ -3,10 +3,10 @@ CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
 CONFIG_COMPILER_OPTIMIZATION_PERF=y
 CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
 CONFIG_FREERTOS_HZ=1000
-# o benchmark mede tempo: sem o watchdog de tarefa interferindo no laço longo
+# the benchmark measures time: no task watchdog interfering with the long loop
 CONFIG_ESP_TASK_WDT_EN=n
 CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=n
-# enxugar o ESP-IDF (o benchmark só precisa de serial e heap)
+# trim ESP-IDF (the benchmark only needs serial and heap)
 CONFIG_NEWLIB_NANO_FORMAT=y
 CONFIG_ESP_ERR_TO_NAME_LOOKUP=n
 CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_SILENT=y

@@ -1,5 +1,5 @@
-"""Quantização pós-treino simulada: pesos em int8 simétrico por linha (canal de saída), reconvertidos para float.
-  python3 ptq_int8.py in.pth out.pth [--bits 8]   (relatório de tamanho e erro por tensor)"""
+"""Simulated post-training quantization: symmetric per-row (output channel) int8 weights, converted back to float.
+  python3 ptq_int8.py in.pth out.pth [--bits 8]   (reports size and error per tensor)"""
 import sys, torch
 src, dst = sys.argv[1], sys.argv[2]; bits = int(sys.argv[sys.argv.index("--bits") + 1]) if "--bits" in sys.argv else 8
 ck = torch.load(src, map_location="cpu"); sd = ck["state_dict"]; new = dict(sd); qmax = 2 ** (bits - 1) - 1

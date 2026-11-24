@@ -1,7 +1,7 @@
-"""Features PREVISTAS pelo acústico do pingo (durações do alinhamento, para casar com o áudio real) + o PCM do mesmo clipe.
-Serve para ajustar o vocoder leve ao tipo de feature que ele vai receber de verdade (mais suave que a extraída do áudio).
-  .venv-mlx/bin/python make_pred.py SPLIT N OUT_PREFIX      -> OUT_PREFIX.f32 (20 colunas) e OUT_PREFIX.s16
-Usa os pesos EMPACOTADOS do pingo (release/hf/weights/pingo-ptbr.bin), os mesmos do produto."""
+"""Features PREDICTED by the pingo acoustic model (alignment durations, to match the real audio) + the PCM of the same clip.
+Used to fine-tune the light vocoder on the kind of features it will actually receive (smoother than the ones extracted from audio).
+  .venv-mlx/bin/python make_pred.py SPLIT N OUT_PREFIX      -> OUT_PREFIX.f32 (20 columns) and OUT_PREFIX.s16
+Uses the PACKED pingo weights (release/hf/weights/pingo-ptbr.bin), the same as the product."""
 import sys, io, json, glob, os, numpy as np, soundfile as sf, pyarrow.parquet as pq
 from pathlib import Path
 from scipy.signal import resample_poly

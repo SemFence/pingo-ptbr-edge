@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Converte o PCM impresso pelo benchmark (PINGO_DUMP_PCM=1) em um WAV de 16 kHz.
-  idf.py monitor | tee log.txt      # deixe rodar até aparecer "fim"
-  python3 tools/pcm_from_serial.py log.txt saida.wav
-Linhas de PCM são só hexadecimal (4 dígitos por amostra); as linhas de log são ignoradas."""
+"""Converts the PCM printed by the benchmark (PINGO_DUMP_PCM=1) into a 16 kHz WAV.
+  idf.py monitor | tee log.txt      # let it run until "fim" appears
+  python3 tools/pcm_from_serial.py log.txt out.wav
+PCM lines are plain hexadecimal (4 digits per sample); log lines are ignored."""
 import re, sys, wave, struct
 hexline = re.compile(r"^[0-9a-f]+$")
 samples = []

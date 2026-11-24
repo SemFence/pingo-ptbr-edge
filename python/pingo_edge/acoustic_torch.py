@@ -1,4 +1,4 @@
-"""Acústico do pingo em PyTorch com os pesos de 4 bits do firmware desquantizados (modelo de semfence/pingo-ptbr: training/model.py)."""
+"""Pingo acoustic model in PyTorch with the firmware's 4-bit weights, dequantized (model from semfence/pingo-ptbr: training/model.py)."""
 import numpy as np
 import torch
 from . import weights as W
@@ -13,14 +13,14 @@ class AcousticTorch:
         sd = {}
         for k, v in self.model.state_dict().items():
             a = ac[W.cname(k)]
-            if v.ndim == 3:                                    # conv: no arquivo (out, k, in) (layout do MLX); no PyTorch (out, in, k)
+            if v.ndim == 3:                                    # conv: stored as (out, k, in) (MLX layout); in PyTorch it is (out, in, k)
                 a = a.reshape(v.shape[0], v.shape[2], v.shape[1]).transpose(0, 2, 1)
             sd[k] = torch.tensor(np.ascontiguousarray(a.reshape(v.shape)))
         self.model.load_state_dict(sd)
 
     @torch.no_grad()
     def features(self, ids, stress, voice, speed=1.0, phone_mask=None):
-        """-> (T,20) features Opus, durações (L,)."""
+        """-> (T,20) Opus features, durations (L,)."""
         m, c = self.model, self.cfg; L = len(ids)
         tok, st = torch.tensor([ids]), torch.tensor([stress])
         enc, log_dur = m.encode(tok, st, torch.tensor([voice]), torch.tensor([L]))

@@ -1,16 +1,16 @@
-// pingo-ptbr edge no navegador, fora da thread principal: usa a biblioteca pingo.js (fonemizador + runtime em C em WebAssembly).
-// Mensagens de entrada: {type: "load"} e {type: "speak", id, text, voice, speed}.
-// Saída: status, ready, sentence (com o áudio assim que fica pronto), done (clipe inteiro), error.
+// pingo-ptbr edge in the browser, off the main thread: uses the pingo.js library (phonemizer + C runtime in WebAssembly).
+// Input messages: {type: "load"} and {type: "speak", id, text, voice, speed}.
+// Output: status, ready, sentence (with the audio as soon as it is ready), done (whole clip), error.
 import { Dizione } from "./assets/dizione/engine.js";
 import { PingoEdge } from "./pingo.js";
 
 let pingo;
 const status = (text, progress) => postMessage({ type: "status", text, progress });
 
-// Suba quando os arquivos de assets/ mudarem, para os navegadores baixarem de novo.
+// Bump when the files in assets/ change, so browsers download them again.
 const VERSION = "1";
 
-// Arquivos baixados ficam no cache do navegador: a segunda visita começa sem rede.
+// Downloaded files stay in the browser cache: the second visit starts without network.
 async function download(url, label) {
   const key = `${url}?v=${VERSION}`;
   let store = null;
@@ -62,7 +62,7 @@ async function speak({ id, text, voice, speed }) {
   let total = 0;
   for (const s of pingo.stream(text, { voice, speed })) {
     chunks.push(s.audio); total = s.total;
-    const heard = s.audio.slice();   // a página toca esta frase já, antes de saber o clipe todo
+    const heard = s.audio.slice();   // the page plays this sentence right away, before the whole clip is known
     postMessage({ type: "sentence", id, index: s.index, total, phonemes: s.phonemes, audio: heard, sampleRate: 16000 }, [heard.buffer]);
   }
   if (!chunks.length) { postMessage({ type: "error", id, message: "O pingo-ptbr só lê português do Brasil (pt-BR) por enquanto.", plain: true }); return; }

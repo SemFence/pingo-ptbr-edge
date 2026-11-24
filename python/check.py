@@ -1,5 +1,5 @@
-"""Confere os backends contra o C: python check.py   (precisa de torch e mlx)
-Mede o erro rms relativo do acústico contra a referência do C/MLX (c/ac_test_ref.f32) e do vocoder MLX contra o PyTorch."""
+"""Checks the backends against the C code: python check.py   (needs torch and mlx)
+Measures the relative rms error of the acoustic model against the C/MLX reference (c/ac_test_ref.f32) and of the MLX vocoder against PyTorch."""
 import pathlib, sys
 import numpy as np
 HERE = pathlib.Path(__file__).resolve().parent; sys.path.insert(0, str(HERE))

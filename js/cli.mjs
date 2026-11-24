@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// pingo-ptbr edge em Node (sem dependências): node js/cli.mjs "Olá, eu sou a voz da SemFence." -o saida.wav [--voice M_sm4] [--speed 1.1]
+// pingo-ptbr edge in Node (no dependencies): node js/cli.mjs "Olá, eu sou a voz da SemFence." -o out.wav [--voice M_sm4] [--speed 1.1]
 import { readFileSync, writeFileSync } from "node:fs";
 import { Dizione } from "../web/public/assets/dizione/engine.js";
 import { loadDizione } from "../web/public/assets/dizione/node.js";
@@ -7,7 +7,7 @@ import { PingoEdge, wavBytes } from "../web/public/pingo.js";
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => { const i = args.indexOf(name); if (i < 0) return fallback; const [, v] = args.splice(i, 2); return v; };
-const output = opt("-o", "saida.wav"), voiceName = opt("--voice", "F_s4"), speed = Number(opt("--speed", "1"));
+const output = opt("-o", "out.wav"), voiceName = opt("--voice", "F_s4"), speed = Number(opt("--speed", "1"));
 const text = args.join(" ");
 if (!text) { console.error('uso: node js/cli.mjs "texto" [-o saida.wav] [--voice F_s4|M_sm4] [--speed 1.0]'); process.exit(1); }
 const voice = { F_s4: 0, M_sm4: 1 }[voiceName];

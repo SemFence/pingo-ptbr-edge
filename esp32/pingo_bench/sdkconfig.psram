@@ -1,10 +1,10 @@
-# Placas com PSRAM: SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.psram" idf.py set-target esp32s3 build
-# A mesma imagem roda em placas sem PSRAM (IGNORE_NOTFOUND), com limite de 64 tokens por frase.
+# Boards with PSRAM: SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.psram" idf.py set-target esp32s3 build
+# The same image runs on boards without PSRAM (IGNORE_NOTFOUND), with a 64-token limit per sentence.
 CONFIG_SPIRAM=y
 CONFIG_SPIRAM_IGNORE_NOTFOUND=y
-# N8R2 e similares (quad, 4 linhas). Para N16R8 / N8R8 (octal): troque por CONFIG_SPIRAM_MODE_OCT=y e CONFIG_SPIRAM_SPEED_80M=y
+# N8R2 and similar (quad, 4 lines). For N16R8 / N8R8 (octal): switch to CONFIG_SPIRAM_MODE_OCT=y and CONFIG_SPIRAM_SPEED_80M=y
 CONFIG_SPIRAM_MODE_QUAD=y
 CONFIG_SPIRAM_SPEED_80M=y
-# Com PSRAM a RAM interna sobra: cache de dados maior (64 KB, linha de 64 B) para as leituras dos pesos do acústico na flash
+# With PSRAM, internal RAM is spare: larger data cache (64 KB, 64 B line) for reads of the acoustic weights in flash
 CONFIG_ESP32S3_DATA_CACHE_64KB=y
 CONFIG_ESP32S3_DATA_CACHE_LINE_64B=y

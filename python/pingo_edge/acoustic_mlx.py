@@ -1,4 +1,4 @@
-"""Acústico do pingo em MLX (cópia da parte acústica de semfence/pingo-ptbr: pingo_mlx.py), usado com os pesos de 4 bits do edge."""
+"""Pingo acoustic model in MLX (copy of the acoustic part of semfence/pingo-ptbr: pingo_mlx.py), used with the edge 4-bit weights."""
 import json, math
 from pathlib import Path
 import mlx.core as mx
@@ -128,7 +128,7 @@ class Acoustic(nn.Module):
 
 
 def phase_features(durations, max_token_frames=200):
-    """durations: ndarray (L,) int -> (idx (F,), phase (F,4)) em numpy (barato, sem grafo)."""
+    """durations: ndarray (L,) int -> (idx (F,), phase (F,4)) in numpy (cheap, no graph)."""
     d = np.asarray(durations, np.int64)
     idx = np.repeat(np.arange(len(d)), d)
     ends = np.cumsum(d); starts = ends - d
@@ -145,7 +145,7 @@ PHONE_LIMIT, FIRST_PHONE_LIMIT = 20, 17
 
 
 def acoustic_features(model, ids, stress, voice, speed=1.0, phone_mask=None, limit=True):
-    """ids/stress: listas; voice: 0/1 -> (T,20) features Opus, durations (L,)."""
+    """ids/stress: lists; voice: 0/1 -> (T,20) Opus features, durations (L,)."""
     c = model.c
     tok = mx.array([ids]); st = mx.array([stress]); v = mx.array([voice])
     enc, log_dur = model.encode(tok, st, v)

@@ -1,4 +1,4 @@
-"""Acústico do pingo em MLX com os pesos de 4 bits do firmware desquantizados."""
+"""Pingo acoustic model in MLX with the firmware's 4-bit weights, dequantized."""
 import numpy as np
 import mlx.core as mx
 from mlx.utils import tree_flatten, tree_unflatten

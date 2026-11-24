@@ -67,7 +67,7 @@ class Attention(nn.Module):
         self.use_rope = use_rope
 
     def forward(self, x, mask):
-        """mask: (B or 1, 1, T, T) booleano, True = pode atender."""
+        """mask: (B or 1, 1, T, T) boolean, True = may attend."""
         b, t, _ = x.shape
         q = self.q(x).view(b, t, self.h, self.hd).transpose(1, 2)
         k = self.k(x).view(b, t, self.kv, self.hd).transpose(1, 2)

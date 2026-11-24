@@ -1,5 +1,5 @@
-"""Lê os headers C do pingo edge (c/xs_weights.h = vocoder xxs int8, c/ac_weights.h = acústico em 4 bits) e grava os MESMOS valores em
-weights/pingo-edge.npz, para o PyTorch e o MLX usarem exatamente os pesos que vão no firmware.   python tools/headers_to_npz.py"""
+"""Reads the pingo edge C headers (c/xs_weights.h = int8 xxs vocoder, c/ac_weights.h = 4-bit acoustic model) and writes the SAME values to
+weights/pingo-edge.npz, so PyTorch and MLX use exactly the weights that go into the firmware.   python tools/headers_to_npz.py"""
 import re, json, sys, pathlib
 import numpy as np
 ROOT = pathlib.Path(__file__).resolve().parent.parent

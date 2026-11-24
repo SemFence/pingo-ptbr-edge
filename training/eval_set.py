@@ -1,4 +1,4 @@
-"""val_spect (mesma perda do treino, sem o termo cosseno) de checkpoints em um conjunto (features, pcm).
+"""val_spect (the training loss, without the cosine term) of checkpoints on a set (features, pcm).
   python3 eval_set.py FEATURES PCM NB_FEATURES ckpt1 ckpt2 ..."""
 import sys, os, types, numpy as np, torch
 sys.modules.setdefault("torchaudio", types.ModuleType("torchaudio"))

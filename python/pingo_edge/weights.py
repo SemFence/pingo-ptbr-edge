@@ -1,4 +1,4 @@
-"""Carrega weights/pingo-edge.npz (gerado de c/*.h por tools/headers_to_npz.py) e desquantiza: acústico 4 bits, vocoder int8."""
+"""Loads weights/pingo-edge.npz (generated from c/*.h by tools/headers_to_npz.py) and dequantizes: 4-bit acoustic model, int8 vocoder."""
 import json, re
 from pathlib import Path
 import numpy as np
@@ -13,7 +13,7 @@ def load(path=DEFAULT):
 
 
 def vocoder(z, meta):
-    """-> dict nome -> float32 (rows, cols) para as matrizes; vetores (viés) como estão. Nomes como no C: fdense1, gru1_ih, cond_gain, ..."""
+    """-> dict name -> float32 (rows, cols) for the matrices; vectors (biases) as they are. Names as in the C code: fdense1, gru1_ih, cond_gain, ..."""
     out = {}
     for key in z.files:
         if not key.startswith("xs_"): continue
@@ -31,7 +31,7 @@ def vocoder_sizes(meta):
 
 
 def acoustic(z, meta):
-    """-> (config dict, dict nome_c -> float32). Os pesos 2-D vêm como (rows, cols) desquantizados; os vetores como estão."""
+    """-> (config dict, dict c_name -> float32). 2-D weights come as dequantized (rows, cols); vectors as they are."""
     cfg = {k[7:].lower(): v for k, v in meta.items() if k.startswith("AC_CFG_")}
     out = {}
     for key in z.files:
@@ -43,7 +43,7 @@ def acoustic(z, meta):
             if meta["AC_WBITS"] == 4:
                 lo = (raw & 0xF).astype(np.int8); hi = (raw >> 4).astype(np.int8)
                 q = np.empty(raw.size * 2, np.int8); q[0::2], q[1::2] = lo, hi
-                q = np.where(q > 7, q - 16, q)[: rows * cols]                 # complemento de dois, -7..7
+                q = np.where(q > 7, q - 16, q)[: rows * cols]                 # two's complement, -7..7
             else:
                 q = raw.astype(np.int8)
             out[n] = (q.astype(np.float32).reshape(rows, cols) * z[f"ac_{n}_s"][:, None]).astype(np.float32)

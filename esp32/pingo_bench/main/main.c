@@ -1,6 +1,6 @@
-/* pingo-ptbr edge (acústico 4 bits + vocoder xxs int8, ativações int8) no ESP32-S3: benchmark.
- * Roda a frase de teste N vezes e imprime pela serial: tempo de cada fase, fator de tempo real, MAC, RAM livre e o rms do áudio
- * (para comparar com o do host). Para ouvir o resultado: defina PINGO_DUMP_PCM 1 e use tools/pcm_from_serial.py. */
+/* pingo-ptbr edge (4-bit acoustic model + int8 xxs vocoder, int8 activations) on the ESP32-S3: benchmark.
+ * Runs the test sentence N times and prints over serial: time of each phase, real-time factor, MACs, free RAM and the audio rms
+ * (to compare with the host's). To listen to the result: set PINGO_DUMP_PCM to 1 and use tools/pcm_from_serial.py. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,13 +15,13 @@
 #include "test_sentence.h"
 
 #define PINGO_RUNS 3
-#define PINGO_DUMP_PCM 0     /* 1 = imprime o PCM em hexadecimal (lento: ~1 s a mais por segundo de áudio) */
+#define PINGO_DUMP_PCM 0     /* 1 = print the PCM in hexadecimal (slow: ~1 s extra per second of audio) */
 static const char *TAG = "pingo";
 
 static void *ialloc(size_t n) { void *p = heap_caps_malloc(n, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT); if (!p) ESP_LOGE(TAG, "sem RAM interna para %u bytes", (unsigned)n); return p; }
 
-/* buffers percorridos em sequência (encoder, features, saída) vão para a PSRAM se existir; senão ficam na RAM interna.
- * Pesos do vocoder e cache KV do decoder (relidos centenas de vezes por segundo) ficam sempre na RAM interna. */
+/* buffers read sequentially (encoder, features, output) go to PSRAM if present, otherwise to internal RAM.
+ * Vocoder weights and the decoder's KV cache (re-read hundreds of times per second) always stay in internal RAM. */
 static void *balloc(size_t n) {
     void *p = heap_caps_malloc(n, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     return p ? p : ialloc(n);
@@ -35,17 +35,17 @@ static void report_heap(const char *when) {
 
 static int run_once(int dump) {
     int64_t t0 = esp_timer_get_time();
-    /* limite de tokens: com PSRAM o encoder (proporcional à frase) vai para ela e frases de até AC_MAXTOK cabem; sem PSRAM, 64 tokens (~49 KB) */
+    /* token limit: with PSRAM the encoder (proportional to the sentence) moves there and sentences up to AC_MAXTOK fit; without PSRAM, 64 tokens (~49 KB) */
     int maxtok = heap_caps_get_total_size(MALLOC_CAP_SPIRAM) ? AC_MAXTOK : 64;
     if (TS_L > maxtok) { ESP_LOGE(TAG, "frase com %d tokens, máximo %d nesta placa", TS_L, maxtok); return -1; }
     ac_enc_ws wsv, *ws = &wsv; void *wsmem = balloc(ac_enc_ws_bytes(TS_L)); if (wsmem) ac_enc_ws_bind(ws, wsmem, TS_L); float *enc = balloc(sizeof(float) * TS_L * AC_W), *ld = balloc(sizeof(float) * TS_L);
     int *dur = balloc(sizeof(int) * TS_L); long enc_macs = 0;
     if (!wsmem || !enc || !ld || !dur) return -1;
     if (ac_encode(ws, ts_tok, ts_stress, TS_VOICE, TS_L, enc, ld, &enc_macs)) { ESP_LOGE(TAG, "frase longa demais"); return -1; }
-    free(wsmem);                                                /* o encoder acabou: devolve a memória antes do decoder */
+    free(wsmem);                                                /* the encoder is done: give its memory back before the decoder */
     int T = ac_durations(ld, ts_tok, ts_mask, TS_L, 1.0f, dur);
     int64_t t1 = esp_timer_get_time();
-    /* streaming: o acústico entrega um quadro por vez e o vocoder consome com 1 quadro de atraso; só uma janela de 5 quadros fica em memória */
+    /* streaming: the acoustic model hands over one frame at a time and the vocoder consumes it with a 1-frame lag; only a 5-frame window stays in memory */
     ac_dec_state *ds = ialloc(sizeof *ds); xs_state *vs = ialloc(sizeof *vs);
     if (!ds || !vs) return -1;
     ac_dec_init(ds); xs_init(vs);
@@ -60,7 +60,7 @@ static int run_once(int dump) {
         if (t == 0) { for (int j = 0; j < 5; j++) memcpy(hist + j * XS_NF, fr0, sizeof fr0); }
         else { memmove(hist, hist + XS_NF, 4 * XS_NF * sizeof(float)); memcpy(hist + 4 * XS_NF, fr0, sizeof fr0); EMIT(); }
     }
-    memmove(hist, hist + XS_NF, 4 * XS_NF * sizeof(float)); memcpy(hist + 4 * XS_NF, fr0, sizeof fr0); EMIT();   /* último quadro: repete o final */
+    memmove(hist, hist + XS_NF, 4 * XS_NF * sizeof(float)); memcpy(hist + 4 * XS_NF, fr0, sizeof fr0); EMIT();   /* last frame: repeat the final one */
     long dec_macs = ds->macs, voc_macs = vs->macs; free(ds); free(vs); free(enc); free(ld); free(dur);
     int64_t t3 = esp_timer_get_time(), t2 = t1 + t_ac;
     (void)t2;
