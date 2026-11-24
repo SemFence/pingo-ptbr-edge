@@ -1,0 +1,14 @@
+{
+ "sample_rate": 16000,
+ "voices": [
+  "F_s4",
+  "M_sm4"
+ ],
+ "max_tokens": 256,
+ "max_utterance_frames": 3000,
+ "parameters": {
+  "acoustic": 270081,
+  "vocoder": 109733,
+  "total": 379814
+ }
+}

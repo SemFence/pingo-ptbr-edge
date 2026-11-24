@@ -9,3 +9,9 @@ test: ac_test
 	./ac_test ac_test_in.i32 ac_test_ref.f32
 clean:
 	rm -f pingo_c ac_test *.s16
+
+# WebAssembly para web/public/assets/pingo_edge.wasm (precisa do emscripten: brew install emscripten)
+wasm:
+	emcc -O3 -DXS_FAST_MATH -ffast-math -I. --no-entry -sSTANDALONE_WASM -sINITIAL_MEMORY=16777216 -sALLOW_MEMORY_GROWTH=0 -sSTACK_SIZE=262144 \
+	  -Wl,--export=pingo_tok,--export=pingo_stress,--export=pingo_mask,--export=pingo_pcm,--export=pingo_maxtok,--export=pingo_speak \
+	  -o ../web/public/assets/pingo_edge.wasm pingo_wasm.c acoustic.c fargan_xs_q8.c

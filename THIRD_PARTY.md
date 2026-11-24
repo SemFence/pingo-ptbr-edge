@@ -19,3 +19,8 @@ PiVo-1.4M (Empero Research, Apache-2.0, <https://huggingface.co/empero-ai/PiVo-1
 - Training speech: `semfence/ptbr-synthetic-speech`, generated with Chatterbox Multilingual pt-BR (Resemble AI, MIT), CC BY 4.0. Texts: `semfence/ptbr-sentences` (includes Mozilla Common Voice sentences, CC0).
 - Acoustic features for the vocoder training come from `fargan_demo` (Opus, BSD-3-Clause), not distributed here.
 - Phonemizer for new sentences: dizione-ptbr (CC BY 4.0 lexicon derived from the Montreal Forced Aligner Brazilian Portuguese dictionary).
+
+## PyTorch/MLX code and the browser demo
+
+- `python/pingo_edge/acoustic_mlx.py` and `pronunciation.py` are copies of `pingo/pingo_mlx.py` (acoustic part) and `pingo/pronunciation.py` from semfence/pingo-ptbr; `_torch_acoustic_model.py` is `training/model.py` from the same repository (code Apache-2.0; design follows PiVo-1.4M, Apache-2.0).
+- `web/public/assets/dizione/` is the compiled dizione-ptbr-js phonemizer (Apache-2.0 code; lexicon CC BY 4.0, derived from the Montreal Forced Aligner Brazilian Portuguese dictionary, see `assets/dizione/data/LICENSE.mfa-dictionary.md`). `web/public/{player,tokens}.js` and the structure of `worker.js`/`index.html` come from the pingo-ptbr demo.

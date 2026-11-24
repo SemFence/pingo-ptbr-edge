@@ -23,7 +23,7 @@ Listening was done by the author alone, it is not a listening test. The sound is
 | Acoustic | 270,081 params, 5 to 8 bits | 270,081 params, **4 bits** (131 KiB) |
 | Vocoder | FARGAN 816,597 params (from PiVo) | **xxs 109,733 params**, int8 (107 KiB), trained from scratch |
 | Vocoder cost | ~299 MMAC/s | **~39.6 MMAC/s** |
-| Runtime | MLX / ONNX | **plain C** (int8 activations, rational tanh/sigmoid) |
+| Runtime | MLX / ONNX | **plain C** (int8 activations, rational tanh/sigmoid), **PyTorch**, **MLX**, **WebAssembly** |
 | Target | Mac, browser | **ESP32-S3** (and any CPU with a C compiler) |
 
 Intermediate sizes also trained (`training/sizes.py`): **s** (262 k params, 90 MMAC/s) and **xs** (160 k params, 56 MMAC/s).
@@ -86,6 +86,29 @@ make test                                               # checks the acoustic mo
 ```
 
 For other text, phonemize with `c/text_to_in.py "text" input.i32` (needs the `pingo/` package from [semfence/pingo-ptbr](https://huggingface.co/semfence/pingo-ptbr) in `PINGO_DIR` and `tiny_voca`/dizione-ptbr) and pass the `.i32` to `pingo_c`.
+
+**In PyTorch and MLX** (`python/`, the SAME weights as the firmware: `weights/pingo-edge.npz`, generated from the C headers by `tools/headers_to_npz.py`):
+
+```bash
+pip install -r python/requirements.txt
+cd python
+python -m pingo_edge --backend torch --text "Olá, eu sou a voz da SemFence." -o out.wav
+python -m pingo_edge --backend mlx   --text "Olá, eu sou a voz da SemFence." -o out.wav       # Apple Silicon
+python check.py                                                                                # checks both against the C code
+```
+
+The acoustic model (4-bit, dequantized) and the xxs vocoder (int8, dequantized) run in float. Measured by `check.py`: features match the C/MLX reference (relative rms error 2.5e-7, 229 frames) and the MLX vocoder matches PyTorch (1.1e-6).
+The PyTorch vocoder is within ~1.2% (relative rms) of the training model with simulated int8 weights (`weights/vocoder-xxs-int8sim.pth`, training-time quantization noise switched off); same audio rms (4205 vs 4209). The vocoder is recursive and amplifies rounding differences.
+They do not run the C code's int8 activations, so the audio is not sample-identical to the firmware's (same rms, 4203 vs 4205).
+
+**In the browser** (`web/public/`, the same C compiled to WebAssembly, 308 KB, no ONNX Runtime):
+
+```bash
+cd web/public && python3 -m http.server 8000      # open http://localhost:8000
+```
+
+The phonemizer (dizione-ptbr, TypeScript) and its lexicon are bundled; the first visit downloads ~1.3 MB. Measured in Claude's browser: 4.0 s of audio in 0.08 s (~50× real time) on a Mac CPU; that is a desktop, not the ESP32.
+To rebuild the `.wasm`: `cd c && make wasm` (needs emscripten).
 
 **On the ESP32-S3:** see [`esp32/pingo_bench/README.md`](esp32/pingo_bench/README.md) (Portuguese; `idf.py set-target esp32s3 && idf.py build flash monitor`).
 

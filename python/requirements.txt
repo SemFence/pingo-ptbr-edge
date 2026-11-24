@@ -1,0 +1,7 @@
+numpy
+scipy
+soundfile
+torch          # backend PyTorch
+mlx>=0.20      # backend MLX (Apple Silicon)
+dizione-ptbr @ git+https://github.com/SemFence/dizione-ptbr
+tiny-voca-ptbr @ git+https://github.com/SemFence/tiny-voca-ptbr
